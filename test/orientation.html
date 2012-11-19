@@ -6,15 +6,15 @@
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js">
   <script>
 window.ondevicemotion = function(event) {
-  event.accelerationIncludingGravity.x
-  event.accelerationIncludingGravity.y
-  event.accelerationIncludingGravity.z
+  $('#x').text(event.accelerationIncludingGravity.x);
+  $('#y').text(event.accelerationIncludingGravity.y);
+  $('#z').text(event.accelerationIncludingGravity.z);
 }
   </script>
 </head>
 <body>
-  <div id="x"></div>
-  <div id="y"></div>
-  <div id="z"></div>
+  <div>x: <span id="x"></span></div>
+  <div>y: <span id="y"></span></div>
+  <div>z: <span id="z"></span></div>
 </body>
 </html>
