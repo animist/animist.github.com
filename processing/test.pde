@@ -36,12 +36,14 @@ void update() {
       }
     }
 
+    /*
     if (millis() - m > 15000) {
       roses = 0;
       for (int i = 0; i < maxRoses; i++) {
         r[i] = new Rose(new Point(random(0,_width), random(0,_height)), random(100, 300), new Point(_width, _height));
       }
     }
+    */
   } else {
     m = millis();
   }
