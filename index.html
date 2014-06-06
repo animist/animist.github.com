@@ -1,18 +1,67 @@
 <html>
+<head>
 <title>ひきこも、る</title>
+<meta name="viewport" content="width=device-width">
+<style>
+body {
+  margin: 0px;
+}
+
+.container {
+  margin: 0px;
+  padding: 0px;
+  width: 100%;
+  height: 100%;
+}
+
+.description {
+  background-color: white;
+  padding: 15px;
+  position: absolute;
+}
+
+@media screen and (min-width: 650px) {
+  .description {
+    top: 20;
+    left: 20;
+    width: 400px;
+  }
+}
+@media screen and (max-width: 650px) {
+  h1 {
+    font-size: 120%;
+  }
+  h2 {
+    font-size: 110%;
+  }
+}
+
+canvas {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+</style>
+<script src="/processing/processing-1.4.8.min.js"></script>
+</head>
 <body>
-I'm here. And there.
+<canvas data-processing-sources="/processing/test.pde"></canvas>
+<div class="container">
+<div class="description">
+<h1>I'm here. And there.</h1>
 <div>
-  <h1>Blog</h1>
+  <h2>Blog</h2>
   <a href="http://blog.hikikomo.ru/">http://blog.hikikomo.ru/</a>
 </div>
 <div>
-  <h1>Facebook</h1>
+  <h2>Facebook</h2>
   <a href="http://fb.me/leicay">http://fb.me/leicay</a>
 </div>
 <div>
-  <h1>Twitter</h1>
+  <h2>Twitter</h2>
   <a href="http://twitter.com/animist">http://twitter.com/animist</a>
+</div>
+</div>
 </div>
 <script type="text/javascript">
 
