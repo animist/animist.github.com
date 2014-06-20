@@ -45,14 +45,12 @@ canvas {
 <script src="/processing/processing-1.4.8.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("foo");
   var desc = document.getElementById("topDesc");
   desc.addEventListener("click", function() {
-    console.log("hoge");
     if (desc.style.opacity == 0.1) {
-      desc.style.opacity = 0.1;
-    } else {
       desc.style.opacity = 1;
+    } else {
+      desc.style.opacity = 0.1;
     }
   });
 });
