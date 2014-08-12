@@ -2,6 +2,7 @@ Field field;
 MinoFactory minoFactory = new MinoFactory();
 Mino activeMino;
 Mino nextMino;
+EffectMaster effecter;
 boolean flagLeft = false;
 boolean flagRight = false;
 boolean flagRotate = false;
@@ -14,9 +15,10 @@ void setup() {
   //size(300, 400);
 
   // 各種初期化
-  field = new Field();
+  effecter = new EffectMaster(true);
+  field = new Field(effecter);
   activeMino = minoFactory.createMino();
-  activeMino.set(field);
+  activeMino.set(field, effecter);
   nextMino = minoFactory.createMino();
 }
 
@@ -25,7 +27,7 @@ void update() {
     activeMino = nextMino;
     nextMino = minoFactory.createMino();
 
-    if (!activeMino.set(field)) {
+    if (!activeMino.set(field, effecter)) {
       field.reset();
       activeMino.freezing();
       nextMino = minoFactory.createMino();
@@ -53,11 +55,14 @@ void update() {
 void draw() {
   update();
 
+  background(50);
+
   field.draw();
   activeMino.draw();
   nextMino.drawNext();
   field.printScore();
   //Controller.draw();
+  effecter.draw();
 }
 
 class Field {
@@ -68,10 +73,12 @@ class Field {
   byte height = 20;
   int score = 0;
   byte speed = 30;
+  EffectMaster effecter;
 
   byte[][] fieldCells = new byte[height][width];
 
-  Field() {
+  Field(EffectMaster _ef) {
+    effecter = _ef;
     init();
   }
 
@@ -107,6 +114,19 @@ class Field {
 
   void lineCheck() {
     byte count = 0;
+    if (effecter.enable) {
+      for (byte k = 19; k >= 1; k--) {
+        boolean fullLine = true;
+        for (byte j = 9; j >= 0; j--) {
+          if (fieldCells[k][j] == 0) { fullLine = false; }
+        }
+        if (fullLine) {
+          for (byte j = 9; j >= 0; j--) {
+            effecter.addCycle(x + blockSize * j, y + blockSize * k);
+          }
+        }
+      }
+    }
     for (byte k = 19; k >= 1;) {
       boolean fullLine = true;
       for (byte j = 9; j >= 0; j--) {
@@ -140,6 +160,8 @@ class Field {
   }
 
   void draw() {
+    stroke(0);
+    strokeWeight(1);
     rect(x, y, width * blockSize, height * blockSize);
 
     for (byte i = 0; i < height; i++) {
@@ -168,6 +190,7 @@ class Mino {
   byte y;
   byte angle;
   Field field;
+  EffectMaster effecter;
   boolean freeze;
   byte width;
   byte height;
@@ -190,8 +213,9 @@ class Mino {
     return minoLoop(CHECK, byte(_x), byte(_y), byte(a));
   }
 
-  boolean set(Field _f) {
+  boolean set(Field _f, EffectMaster _ef) {
     field = _f;
+    effecter = _ef;
     x = 4;
     y = 0;
     angle = 0;
@@ -274,6 +298,12 @@ class Mino {
         }
       }
     }
+    if (selector == FREEZE) {
+      effecter.addRipple(
+        field.x + (field.blockSize + width / 2) * _x,
+        field.y + (field.blockSize + height / 2) * _y
+      );
+    }
     return true;
   }
 
@@ -335,6 +365,139 @@ class MinoFactory {
   }
 }
 
+class EffectMaster {
+  final int CYCLE_SIZE = 100;
+  final int RIPPLE_SIZE = 200;
+  RippleEffecter[] ripples = new RippleEffecter[RIPPLE_SIZE];
+  int ripplePointer = 0;
+  CycleEffecter[] cycles = new CycleEffecter[CYCLE_SIZE];
+  int cyclePointer = 0;
+  boolean enable = true;
+
+  EffectMaster(boolean _e) {
+    enable = _e;
+
+    for (int i = 0; i < CYCLE_SIZE; i++) {
+      cycles[i] = new CycleEffecter(0, 0);
+      cycles[i].freezing();
+    }
+    for (int i = 0; i < RIPPLE_SIZE; i++) {
+      ripples[i] = new RippleEffecter(0, 0);
+      ripples[i].freezing();
+    }
+  }
+
+  void addCycle(int x, int y) {
+    if (cyclePointer >= CYCLE_SIZE) { cyclePointer = 0; }
+
+    cycles[cyclePointer] = new CycleEffecter(x, y);
+    cyclePointer++;
+  }
+
+  void addRipple(int x, int y) {
+    if (ripplePointer >= RIPPLE_SIZE) { ripplePointer = 0; }
+
+    ripples[ripplePointer] = new RippleEffecter(x, y);
+    ripplePointer++;
+  }
+
+  void draw() {
+    if (!enable) { return; }
+
+    for (int i = 0; i < CYCLE_SIZE; i++) {
+      if (!cycles[i].freeze) { cycles[i].draw(); }
+    }
+    for (int i = 0; i < RIPPLE_SIZE; i++) {
+      if (!ripples[i].freeze) { ripples[i].draw(); }
+    }
+  }
+}
+
+class CycleEffecter {
+  boolean freeze = false;
+  int x;
+  int y;
+  float a = 0;
+  float[] t = new float[4];
+  float[] n = { 0.25, 0.24, 0.23, 0.22 };
+
+  CycleEffecter(int _x, int _y) {
+    x = _x;
+    y = _y;
+    for (byte i = 0; i < 4; i++) { t[i] = 0; }
+  }
+
+  void freezing() {
+    freeze = true;
+  }
+
+  void draw() {
+    for (byte i = 0; i < 4; i++) {
+      switch (i) {
+        case 0:
+          fill(128, 64, 64, 255 - a);
+          break;
+        case 1:
+          fill(64, 128, 64, 255 - a);
+          break;
+        case 2:
+          fill(64, 64, 128, 255 - a);
+          break;
+        case 3:
+          fill(128, 128, 128, 255 - a);
+          break;
+      }
+      rect(calX(i) + x, calY(i) + y, 10, 10);
+      t[i] = t[i] + n[i];
+    }
+    a += 5;
+
+    if (a > 255) { freeze = true; }
+  }
+
+  float calX(int i) {
+    return 1.2 * (cos(t[i]) + t[i] * sin(t[i]));
+  }
+
+  float calY(int i) {
+    return 1.2 * (sin(t[i]) - t[i] * cos(t[i]));
+  }
+}
+
+class RippleEffecter {
+  boolean freeze = false;
+  int x;
+  int y;
+  int size = 0;
+
+  RippleEffecter(int _x, int _y) {
+    x = _x;
+    y = _y;
+  }
+
+  void freezing() {
+    freeze = true;
+  }
+
+  void draw() {
+    stroke(0, 128, 0, 255 - size * 0.5);
+
+    noFill();
+    strokeWeight(5);
+    ellipse(x, y, size, size);
+    ellipse(x, y, size * 0.85, size * 0.85);
+    strokeWeight(6);
+    ellipse(x, y, size * 0.7, size * 0.7);
+    strokeWeight(8);
+    ellipse(x, y, size * 0.5, size * 0.5);
+    strokeWeight(10);
+    ellipse(x, y, size * 0.25, size * 0.25);
+    size += 20;
+
+    if (size > 500) { freeze = true; }
+  }
+}
+/*
 static class Controller {
   static void draw() {
     fill(128);
@@ -356,6 +519,7 @@ static class Controller {
     ellipse(210, 330, 75, 75);
   }
 }
+*/
 
 void keyPressed() {
   if (key == 'h' || keyCode == LEFT) { flagLeft = true; }
