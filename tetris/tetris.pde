@@ -377,13 +377,15 @@ class EffectMaster {
   EffectMaster(boolean _e) {
     enable = _e;
 
-    for (int i = 0; i < CYCLE_SIZE; i++) {
-      cycles[i] = new CycleEffecter(0, 0);
-      cycles[i].freezing();
-    }
-    for (int i = 0; i < RIPPLE_SIZE; i++) {
-      ripples[i] = new RippleEffecter(0, 0);
-      ripples[i].freezing();
+    if (_e) {
+      for (int i = 0; i < CYCLE_SIZE; i++) {
+        cycles[i] = new CycleEffecter(0, 0);
+        cycles[i].freezing();
+      }
+      for (int i = 0; i < RIPPLE_SIZE; i++) {
+        ripples[i] = new RippleEffecter(0, 0);
+        ripples[i].freezing();
+      }
     }
   }
 
@@ -417,7 +419,8 @@ class CycleEffecter {
   boolean freeze = false;
   int x;
   int y;
-  float a = 0;
+  int size = 10;
+  int a = 0;
   float[] t = new float[4];
   float[] n = { 0.25, 0.24, 0.23, 0.22 };
 
@@ -447,10 +450,11 @@ class CycleEffecter {
           fill(128, 128, 128, 255 - a);
           break;
       }
-      rect(calX(i) + x, calY(i) + y, 10, 10);
+      rect(calX(i) + x, calY(i) + y, size, size);
       t[i] = t[i] + n[i];
     }
     a += 5;
+    size = 10 - a / 25;
 
     if (a > 255) { freeze = true; }
   }
