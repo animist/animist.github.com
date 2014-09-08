@@ -24,7 +24,7 @@ void draw() {
     } else {
       strokeWeight(0);
       stroke(0);
-      fill(0, 0, 0, 64);
+      fill(0, 0, 0, 100;
       rect(0, 0, width, height);
       rotater = random(0.001, 0.999);
       branches = new ArrayList();
