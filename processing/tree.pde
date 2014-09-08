@@ -28,7 +28,7 @@ void draw() {
       rect(0, 0, width, height);
       rotater = random(0.001, 0.999);
       branches = new ArrayList();
-      branch = new Branch(width / 2 + random(-100, +100), height / 1.5 + random(-100, +100), PI * random(0, 2), random(32, 80), random(4.0, 9.0));
+      branch = new Branch(width / 2 + random(-100, +100), height / 2 + random(-100, +100), PI * random(0, 2), random(32, 80), random(4.0, 9.0));
       branches.add(branch.draw());
       return;
     }
