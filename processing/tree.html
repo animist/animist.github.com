@@ -1,0 +1,42 @@
+<html>
+<head>
+<title>ひきこも、る</title>
+<meta name="viewport" content="width=device-width">
+<style>
+body {
+  margin: 0px;
+  background-color: #000;
+}
+
+.container {
+  margin: 0px;
+  padding: 0px;
+  width: 100%;
+  height: 100%;
+}
+
+canvas {
+  position: fixed;
+  height: 100%;
+}
+</style>
+<script src="processing-1.4.8.min.js"></script>
+</head>
+<body>
+<canvas data-processing-sources="tree.pde"></canvas>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-33141343-1']);
+  _gaq.push(['_setDomainName', 'hikikomo.ru']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+</body>
+</html>
