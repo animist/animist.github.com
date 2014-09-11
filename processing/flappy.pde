@@ -396,10 +396,11 @@ class Item {
 
   boolean collision(Ball b) {
     if (x + size > b.x && x - size < b.x) {
-      get = true;
-      return y == 0 ? b.y < y + size : b.y > y - size;
+      if (b.y < y + size * 2 && b.y > y - size * 2) {
+        get = true;
+        return true;
+      }
     }
     return false;
   }
 }
-
