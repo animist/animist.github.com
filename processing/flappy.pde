@@ -43,6 +43,7 @@ void update() {
         mode = MODE_WAIT;
         ball.reset();
         life.reset();
+        item.reset();
         sm.reset();
         title.resetWait();
       }
