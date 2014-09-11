@@ -2,6 +2,7 @@ Ball ball = new Ball();
 SquareManager sm = new SquareManager();
 Life life = new Life();
 Title title = new Title();
+Item item = new Item();
 
 static final int FPS = 60;
 static final int MODE_WAIT = 0;
@@ -16,6 +17,7 @@ void setup() {
 
   sm.init();
   ball.reset();
+  item.reset();
 }
 
 void update() {
@@ -26,9 +28,15 @@ void update() {
       break;
     case MODE_GAME:
       ball.update();
+      item.update();
 
       if (sm.runAndHit(ball)) {
         life.damage();
+      }
+
+      if (item.collision(ball)) {
+        life.recovery();
+        item.reset();
       }
 
       if (!life.update()) {
@@ -55,7 +63,14 @@ void draw() {
 
   ball.draw();
   sm.draw();
+  item.draw();
   life.draw();
+
+  strokeWeight(2);
+  stroke(255, 200, 128);
+  stroke(128, 200, 255);
+  line(0, 0, width, 0);
+  line(0, pseudoHeight, width, pseudoHeight);
 }
 
 void mouseClicked() {
@@ -63,8 +78,9 @@ void mouseClicked() {
     case MODE_WAIT:
       if (title.isWait()) {
         mode = MODE_GAME;
+        sm.resetScore();
+        ball.stopGlow();
       }
-      ball.stopGlow();
       break;
     case MODE_GAME:
       ball.jump();
@@ -119,6 +135,7 @@ class Ball {
 }
 
 class SquareManager {
+  float score = 1;
   int num = 4;
   Square[] squares = new Square[num];
 
@@ -137,17 +154,28 @@ class SquareManager {
     }
   }
 
+  void resetScore() {
+    score = 1;
+  }
+
   void draw() {
     for (int i = 0; i < num; i++) {
       squares[i].draw();
     }
+
+    fill(128);
+    textSize(20);
+    textAlign(CENTER);
+    text("Score : " + round((score - 1) * 100) + (score > 1 ? "00" : ""), width / 2, pseudoHeight + 25);
   }
 
   boolean runAndHit(Ball b) {
     boolean result = false;
 
     for (int i = 0; i < num; i++) {
-      squares[i].update();
+      if (squares[i].update()) {
+        score *= 1.05;
+      }
       squares[i].accel(0.001);
 
       if (squares[i].collision(b)) {
@@ -173,7 +201,7 @@ class SquareManager {
 
 class Square {
   float x, y;
-  int sizeMax, weight;;
+  int sizeMax, weight;
   float size, speed, grow;
 
   Square(int _x) {
@@ -183,18 +211,21 @@ class Square {
     resetSpeed();
   }
 
-  void update() {
+  boolean update() {
     x = x - speed;
     size = size + grow;
 
     if (x + weight < 0) {
       x = width;
       resetSize();
+      return true;
     }
 
     if (size < 0 || size > sizeMax) {
       grow = -grow;
     }
+
+    return false;
   }
 
   void resetSize() {
@@ -260,6 +291,10 @@ class Life {
   void damage() {
     damageCounter += 3;
   }
+
+  void recovery() {
+    life += 15;
+  }
 }
 
 class Title {
@@ -290,8 +325,9 @@ class Title {
     text("Click to Start and Jump!", width / 2, pseudoHeight / 2);
 
     // draw the mask
-    pushMatrix();
+    noStroke();
     fill(0, 0, 0, 200);
+    pushMatrix();
     translate(glow, 150);
     rotate(PI / 4);
     rect(7, 0, 10, 100);
@@ -299,3 +335,67 @@ class Title {
     popMatrix();
   }
 }
+
+class Item {
+  float x, y;
+  float angle, speed;
+  int glow, glowSpeed = 3;
+  int size = 10;
+
+  Item() {
+    glow = 0;
+    resetSpeed();
+    reset();
+  }
+
+  boolean update() {
+    x = x - speed;
+    angle += 0.01;
+    glow += glowSpeed;
+
+    if (angle > 2) {
+      angle = 0;
+    }
+
+    if (glow < 0 || glow > 127) {
+      glowSpeed = -glowSpeed;
+    }
+
+    if (x < 0) {
+      reset();
+    }
+
+    return false;
+  }
+
+  void reset() {
+    x = round(random(15, width)) + width;
+    y = round(random(15, pseudoHeight - 15));
+  }
+
+  void resetSpeed() {
+    speed = 2;
+  }
+
+  void accel(float _s) {
+    speed += _s;
+  }
+
+  void draw() {
+    noStroke();
+    fill(128 + glow, 128 + glow, glow);
+    pushMatrix();
+    translate(x, y);
+    rotate(PI * angle);
+    rect(-size, -size, size * 2, size * 2);
+    popMatrix();
+  }
+
+  boolean collision(Ball b) {
+    if (x + size > b.x && x - size < b.x) {
+      return y == 0 ? b.y < y + size : b.y > y - size;
+    }
+    return false;
+  }
+}
+
