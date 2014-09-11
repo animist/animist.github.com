@@ -391,7 +391,7 @@ class Item {
     rotate(PI * angle);
     rect(-size, -size, size * 2, size * 2);
     popMatrix();
-    if (get) { background(255, 0, 0); get = false; }
+    if (get) { background(255, 255, 0); get = false; }
   }
 
   boolean collision(Ball b) {
