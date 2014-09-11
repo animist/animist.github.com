@@ -265,13 +265,14 @@ class Square {
 class Life {
   int life;
   int damageCounter;
+  final int LIFE_MAX = 300;
 
   Life() {
     reset();
   }
 
   void reset() {
-    life = 300;
+    life = LIFE_MAX;
     damageCounter = 0;
   }
 
@@ -295,6 +296,7 @@ class Life {
 
   void recovery() {
     life += 15;
+    if (life > LIFE_MAX) { life = LIFE_MAX; }
   }
 }
 
