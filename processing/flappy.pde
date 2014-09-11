@@ -342,6 +342,7 @@ class Item {
   float angle, speed;
   int glow, glowSpeed = 3;
   int size = 10;
+  boolean get = false;
 
   Item() {
     glow = 0;
@@ -390,10 +391,12 @@ class Item {
     rotate(PI * angle);
     rect(-size, -size, size * 2, size * 2);
     popMatrix();
+    if (get) { background(255, 0, 0); get = false; }
   }
 
   boolean collision(Ball b) {
     if (x + size > b.x && x - size < b.x) {
+      get = true;
       return y == 0 ? b.y < y + size : b.y > y - size;
     }
     return false;
