@@ -329,7 +329,7 @@ class Title {
 
     // draw the mask
     noStroke();
-    fill(0, 0, 0, 200);
+    fill(0, 0, 0, 150);
     pushMatrix();
     translate(glow, 150);
     rotate(PI / 4);
