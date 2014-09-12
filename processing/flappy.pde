@@ -265,13 +265,14 @@ class Square {
 class Life {
   int life;
   int damageCounter;
+  final int LIFE_MAX = 300;
 
   Life() {
     reset();
   }
 
   void reset() {
-    life = 300;
+    life = LIFE_MAX;
     damageCounter = 0;
   }
 
@@ -295,6 +296,7 @@ class Life {
 
   void recovery() {
     life += 15;
+    if (life > LIFE_MAX) { life = LIFE_MAX; }
   }
 }
 
@@ -342,6 +344,7 @@ class Item {
   float angle, speed;
   int glow, glowSpeed = 3;
   int size = 10;
+  boolean get = false;
 
   Item() {
     glow = 0;
@@ -390,13 +393,16 @@ class Item {
     rotate(PI * angle);
     rect(-size, -size, size * 2, size * 2);
     popMatrix();
+    if (get) { background(255, 0, 255); get = false; }
   }
 
   boolean collision(Ball b) {
     if (x + size > b.x && x - size < b.x) {
-      return y == 0 ? b.y < y + size : b.y > y - size;
+      if (b.y < y + size * 2 && b.y > y - size * 2) {
+        get = true;
+        return true;
+      }
     }
     return false;
   }
 }
-
