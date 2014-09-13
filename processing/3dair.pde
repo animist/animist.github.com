@@ -29,6 +29,7 @@ void update() {
       if (plane.update()) {
         mode = MODE_WAIT;
         plane.reset();
+        pylons.reset();
         title.resetWait();
       }
       pylons.update();
@@ -70,9 +71,9 @@ void keyReleased() {
 }
 
 void moveByMouse() {
-  if (mouseX + 20 < plane.x) {
+  if (mouseX + plane.size < plane.x) {
     plane.goLeft();
-  } else if (mouseX - 20 > plane.x) {
+  } else if (mouseX - plane.size > plane.x) {
     plane.goRight();
   } else {
     plane.stop();
@@ -125,11 +126,13 @@ class Plane {
   }
 
   void goRight() {
+    if (leftMode) { stop(); }
     rightMode = true;
     leftMode = false;
   }
 
   void goLeft() {
+    if (rightMode) { stop(); }
     rightMode = false;
     leftMode = true;
   }
@@ -212,28 +215,47 @@ class Plane {
 class Pylon {
   Plane p;
   float size = 0;
-  int defaultSpeed = 3;
-  float speed = defaultSpeed;
+
+  final float INITIAL_SPEED = 1.0000001;
+
+  float defaultSpeed;
+  float speed;
   float x = 0;
   float xSpeed = 5;
+
 
   Pylon(Plane _p, int _s) {
     p = _p;
     size = _s;
+    reset();
+  }
+
+  void accel() {
+    defaultSpeed += (INITIAL_SPEED - 1) / 2;
+  }
+
+  void reset() {
+    defaultSpeed = INITIAL_SPEED;
+    resetSpeed();
+  }
+
+  void resetSpeed() {
+    speed = defaultSpeed;
   }
 
   boolean update() {
     size += speed;
     x += xSpeed;
-    speed += pow(speed, 3) * 0.001;
+    //speed *= 1.05;
+    speed += pow(size, 3) * 0.000003;
     //speed += pow(size, 3) * 0.000001;
 
     if (size > 150) {
       collision();
       x = 0;
       size = 0;
-      speed = defaultSpeed;
       xSpeed = round(random(-1.5, 4.5));
+      reset();
       return true;
     }
     return false;
@@ -292,6 +314,12 @@ class Pylons {
     }
   }
 
+  void reset() {
+    for (int i = 0; i < 2; i++) {
+      pylons[i].reset();
+    }
+  }
+
   void resetScore() {
     score = 1;
   }
@@ -299,8 +327,12 @@ class Pylons {
   void swap() {
     Pylon tmpPylon;
     tmpPylon = pylons[0];
+    tmpPylon.resetSpeed();
     pylons[0] = pylons[1];
     pylons[1] = tmpPylon;
+    for (int i = 0; i < 2; i++) {
+      pylons[i].accel();
+    }
   }
 
   void draw() {
