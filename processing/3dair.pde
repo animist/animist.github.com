@@ -1,10 +1,18 @@
 Pylons pylons;
 Plane plane;
+Title title = new Title();
+Background bg = new Background();
 
 final int FPS = 30;
+static final int MODE_WAIT = 0;
+static final int MODE_GAME = 1;
+
+int mode = MODE_WAIT;
+
+int pseudoHeight = 400;
 
 void setup() {
-  size(400, 400);
+  size(400, 700);
   frameRate(FPS);
 
   plane = new Plane();
@@ -12,32 +20,78 @@ void setup() {
 }
 
 void update() {
-  plane.update();
-  pylons.update();
+  switch (mode) {
+    case MODE_WAIT:
+      title.update();
+      break;
+    case MODE_GAME:
+      moveByMouse();
+      if (plane.update()) {
+        mode = MODE_WAIT;
+        plane.reset();
+        title.resetWait();
+      }
+      pylons.update();
+      break;
+  }
 }
 
 void draw() {
   update();
 
-  noStroke();
-  int gradHeight = 5;
-  for (int i = 0; i < height / gradHeight; i++) {
-    int grad = 180 / (height / gradHeight) * i;
-    fill(50 + grad, 50 + grad, 255);
-    rect(0, gradHeight * i, width, gradHeight);
-  }
+  bg.draw();
 
-  pylons.draw();
-  plane.draw();
+  switch (mode) {
+    case MODE_WAIT:
+      title.draw();
+      pylons.drawScore();
+      break;
+    case MODE_GAME:
+      pylons.draw();
+      plane.draw();
+      break;
+  }
 }
 
 void keyPressed() {
-  if (key == 'h' || keyCode == LEFT) { plane.goRight(); }
-  else if (key == 'l' || keyCode == RIGHT) { plane.goLeft(); }
+  switch (mode) {
+    case MODE_WAIT:
+      startGame();
+      break;
+    case MODE_GAME:
+      if (key == 'h' || keyCode == LEFT) { plane.goLeft(); }
+      else if (key == 'l' || keyCode == RIGHT) { plane.goRight(); }
+      break;
+  }
 }
 
 void keyReleased() {
   plane.stop();
+}
+
+void moveByMouse() {
+  if (mouseX + 20 < plane.x) {
+    plane.goLeft();
+  } else if (mouseX - 20 > plane.x) {
+    plane.goRight();
+  } else {
+    plane.stop();
+  }
+}
+
+void mouseClicked() {
+  switch (mode) {
+    case MODE_WAIT:
+      startGame();
+      break;
+  }
+}
+
+void startGame() {
+  if (title.isWait()) {
+    mode = MODE_GAME;
+    pylons.resetScore();
+  }
 }
 
 class Plane {
@@ -56,9 +110,17 @@ class Plane {
   boolean damageFlag;
   int damageCounter;
 
+  int life;
+  final int LIFE_MAX = 300;
+
   Plane() {
+    reset();
+  }
+
+  void reset() {
     x = width / 2;
-    y = height / 2;
+    y = pseudoHeight / 2;
+    life = LIFE_MAX;
     resetDamage();
   }
 
@@ -78,18 +140,31 @@ class Plane {
     speed = 0;
   }
 
-  void update() {
+  boolean update() {
     if (x - size + speed > 0 && x + size + speed < width) {
       x += speed;
     }
 
     if (rightMode && abs(speed) < MAX_SPEED) {
-      speed += -accel;
+      speed += accel;
     }
 
     if (leftMode && abs(speed) < MAX_SPEED) {
-      speed += accel;
+      speed += -accel;
     }
+
+
+    if (damageFlag) {
+      life -= 5;
+      damageCounter--;
+      if (damageCounter < 0) {
+        resetDamage();
+      }
+      if (life < 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void damage() {
@@ -110,11 +185,6 @@ class Plane {
         fill(255);
         stroke(255);
       }
-
-      damageCounter--;
-      if (damageCounter < 0) {
-        resetDamage();
-      }
     } else {
       fill(32, 32, 128);
       stroke(32, 32, 128);
@@ -131,10 +201,11 @@ class Plane {
     ellipse(0, -size, size * 2, size * 2);
     line(-size * 4, -size, size * 4, -size);
     popMatrix();
-    /*
-    ellipse(x, y, size * 2, size * 2);
-    line(x - size * 4, y, x + size * 4, y);
-    */
+
+    // draw life gage
+    noStroke();
+    fill(255, 64, 128, 200);
+    rect(50, 20, life, 5);
   }
 }
 
@@ -183,11 +254,11 @@ class Pylon {
   }
 
   float topY() {
-    return height / 3 - size;
+    return pseudoHeight / 3 - size;
   }
 
   float bottomY() {
-    return height / 3 - size + size * 3;
+    return pseudoHeight / 3 - size + size * 3;
   }
 
   float rightX() {
@@ -204,6 +275,7 @@ class Pylon {
 class Pylons {
   Plane p;
   Pylon[] pylons = new Pylon[2];
+  float score = 1;
 
   Pylons(Plane _p) {
     p = _p;
@@ -215,8 +287,13 @@ class Pylons {
     for (int i = 0; i < 2; i++) {
       if (pylons[i].update()) {
         swap();
+        score *= 1.05;
       }
     }
+  }
+
+  void resetScore() {
+    score = 1;
   }
 
   void swap() {
@@ -233,20 +310,80 @@ class Pylons {
     stroke(255);
     strokeWeight(1);
     line(0, 0, pylons[1].leftX(), pylons[1].topY());
-    line(0, height, pylons[1].leftX(), pylons[1].bottomY());
+    line(0, pseudoHeight, pylons[1].leftX(), pylons[1].bottomY());
     line(width, 0, pylons[1].rightX(), pylons[1].topY());
-    line(width, height, pylons[1].rightX(), pylons[1].bottomY());
+    line(width, pseudoHeight, pylons[1].rightX(), pylons[1].bottomY());
 
     line(pylons[1].leftX(), pylons[1].topY(), pylons[0].leftX(), pylons[0].topY());
     line(pylons[1].leftX(), pylons[1].bottomY(), pylons[0].leftX(), pylons[0].bottomY());
     line(pylons[1].rightX(), pylons[1].topY(), pylons[0].rightX(), pylons[0].topY());
     line(pylons[1].rightX(), pylons[1].bottomY(), pylons[0].rightX(), pylons[0].bottomY());
 
-    line(pylons[0].leftX(), pylons[0].topY(), width / 2 - 5, height / 3 - 5);
-    line(pylons[0].leftX(), pylons[0].bottomY(), width / 2 - 5, height / 3 + 5);
-    line(pylons[0].rightX(), pylons[0].topY(), width / 2 + 5, height / 3 - 5);
-    line(pylons[0].rightX(), pylons[0].bottomY(), width / 2 + 5, height / 3 + 5);
+    line(pylons[0].leftX(), pylons[0].topY(), width / 2 - 5, pseudoHeight / 3 - 5);
+    line(pylons[0].leftX(), pylons[0].bottomY(), width / 2 - 5, pseudoHeight / 3 + 5);
+    line(pylons[0].rightX(), pylons[0].topY(), width / 2 + 5, pseudoHeight / 3 - 5);
+    line(pylons[0].rightX(), pylons[0].bottomY(), width / 2 + 5, pseudoHeight / 3 + 5);
     noFill();
-    rect(width / 2 - 5, height / 3 - 5, 10, 10);
+    rect(width / 2 - 5, pseudoHeight / 3 - 5, 10, 10);
+
+    drawScore();
+  }
+
+  void drawScore() {
+    fill(128);
+    textSize(20);
+    textAlign(CENTER);
+    text("Score : " + round((score - 1) * 100) + (score > 1 ? "00" : ""), width / 2, pseudoHeight + 25);
+  }
+}
+
+class Title {
+  float glow = 0;
+  float glowSpeed = 0.1;
+  int waitCounter = 0;
+
+  void update() {
+    glow += glowSpeed;
+    glowSpeed *= 1.2;
+    if (glow > 200) {
+      glowSpeed = -0.1;
+    } else if (glow < 0) {
+      glowSpeed = 0.1;
+    }
+    if (waitCounter > 0) { waitCounter--; }
+  }
+
+  void resetWait() {
+    waitCounter = round(FPS * 1.5);
+  }
+
+  boolean isWait() {
+    return waitCounter == 0;
+  }
+
+  void draw() {
+    fill(0, glow, 0);
+    textSize(20);
+    textAlign(CENTER);
+    text("Click or Tap to Start!", width / 2, pseudoHeight / 2);
+  }
+}
+
+class Background {
+  void draw() {
+    background(0);
+    noStroke();
+    int gradHeight = 5;
+    for (int i = 0; i < (pseudoHeight / 3 + 10) / gradHeight; i++) {
+      int grad = 180 / ((pseudoHeight / 3 + 10) / gradHeight) * i;
+      fill(50 + grad, 50 + grad, 255);
+      rect(0, gradHeight * i, width, gradHeight);
+    }
+    for (int i = 0; i < (pseudoHeight - (pseudoHeight / 3 + 5)) / gradHeight; i++) {
+      int grad = 180 / ((pseudoHeight - (pseudoHeight / 3 + 5)) / gradHeight) * i;
+      fill(255 - grad, 250 - grad*1.5, 240 - grad*2, 255);
+      //fill(255 - grad, 230 - grad, 180 - grad, 255);
+      rect(0, gradHeight * i + (pseudoHeight / 3 + 5), width, gradHeight);
+    }
   }
 }
