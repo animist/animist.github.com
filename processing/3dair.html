@@ -21,6 +21,17 @@ canvas {
 }
 </style>
 <script src="processing-1.4.8.min.js"></script>
+<script>
+window.onload = function {
+  var cv = document.getElementsByTagName('canvas')[0];
+
+  if (document.documentElement.clientHeight > document.documentElement.clientWidth) {
+    document.getElementsByTagName('canvas')[0].style.width = "100%"
+  } else {
+    document.getElementsByTagName('canvas')[0].style.height = "100%"
+  }
+}
+</script>
 </head>
 <body>
 <canvas data-processing-sources="3dair.pde"></canvas>
@@ -37,15 +48,6 @@ canvas {
     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
   })();
 
-</script>
-<script>
-var cv = document.getElementsByTagName('canvas')[0];
-
-if (document.documentElement.clientHeight > document.documentElement.clientWidth) {
-  document.getElementsByTagName('canvas')[0].style.width = "100%"
-} else {
-  document.getElementsByTagName('canvas')[0].style.height = "100%"
-}
 </script>
 </body>
 </html>
