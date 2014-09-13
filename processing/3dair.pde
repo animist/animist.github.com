@@ -264,8 +264,11 @@ class Pylon {
   void draw() {
     stroke(128);
     strokeWeight(1);
+    /*
     fill(64, 128, 255, 30);
     rect(leftX(), topY(), size * 2, size * 3);
+    */
+    stroke(0);
     fill(255, 230);
     rect(leftX(), topY(), size, size * 3);
     rect(width / 2 + size - x, topY(), size, size * 3);
@@ -339,6 +342,7 @@ class Pylons {
     for (int i = 0; i < 2; i++) {
       pylons[i].draw();
     }
+    /*
     stroke(255);
     strokeWeight(1);
     line(0, 0, pylons[1].leftX(), pylons[1].topY());
@@ -357,6 +361,7 @@ class Pylons {
     line(pylons[0].rightX(), pylons[0].bottomY(), width / 2 + 5, pseudoHeight / 3 + 5);
     noFill();
     rect(width / 2 - 5, pseudoHeight / 3 - 5, 10, 10);
+    */
 
     drawScore();
   }
