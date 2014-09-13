@@ -18,10 +18,21 @@ body {
 
 canvas {
   position: fixed;
-  width: 100%;
 }
 </style>
 <script src="processing-1.4.8.min.js"></script>
+<script>
+window.onload = function() {
+  var cv = document.getElementsByTagName('canvas')[0];
+
+  if (document.documentElement.clientHeight > document.documentElement.clientWidth) {
+    document.getElementsByTagName('canvas')[0].style.width = "100%"
+  } else {
+    document.getElementsByTagName('canvas')[0].style.height = "100%"
+  }
+  cv.focus();
+}
+</script>
 </head>
 <body>
 <canvas data-processing-sources="flappy.pde"></canvas>
