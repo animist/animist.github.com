@@ -1,6 +1,6 @@
 Tree tree;
 boolean debug = false;
-boolean drawGen = true;
+boolean drawGen = false;
 int _width = screen.width;
 int _height = screen.height;
 
