@@ -1,12 +1,12 @@
 Tree tree;
 boolean debug = false;
 boolean drawGen = true;
+int _width = screen.width;
+int _height = screen.height;
 
 void setup() {
-  //frameRate(128);
   frameRate(60);
-  //frameRate(15);
-  size(displayWidth, displayHeight);
+  size(_width, _height);
   background(0);
   stroke(0);
 
@@ -191,8 +191,4 @@ class Branch {
     }
     return color(128, 128, 128);
   }
-}
-
-boolean sketchFullScreen() {
-  return true;
 }
