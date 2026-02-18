@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>動体検知パーティクルシステム</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    color: #00ffcc;
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #app {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 映像レイヤー */
+  #videoCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  /* パーティクルレイヤー */
+  #particleCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  /* HUD オーバーレイ */
+  #hud {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  .hud-corner {
+    position: absolute;
+    width: 40px; height: 40px;
+    border-color: #00ffcc;
+    border-style: solid;
+    opacity: 0.6;
+  }
+  .hud-corner.tl { top: 16px; left: 16px; border-width: 2px 0 0 2px; }
+  .hud-corner.tr { top: 16px; right: 16px; border-width: 2px 2px 0 0; }
+  .hud-corner.bl { bottom: 16px; left: 16px; border-width: 0 0 2px 2px; }
+  .hud-corner.br { bottom: 16px; right: 16px; border-width: 0 2px 2px 0; }
+
+  #stats {
+    position: absolute;
+    top: 24px; left: 70px;
+    font-size: 11px;
+    color: #00ffcc;
+    opacity: 0.8;
+    line-height: 1.8;
+    text-shadow: 0 0 8px #00ffcc88;
+  }
+
+  #label {
+    position: absolute;
+    top: 24px; right: 70px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 0.25em;
+    color: #00ffcc;
+    opacity: 0.7;
+    text-shadow: 0 0 20px #00ffcc;
+  }
+
+  #controls {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .ctrl-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ctrl-label {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    opacity: 0.6;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100px;
+    height: 2px;
+    background: #00ffcc33;
+    outline: none;
+    border-radius: 0;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px; height: 10px;
+    background: #00ffcc;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #00ffcc;
+    cursor: pointer;
+  }
+
+  #startBtn {
+    background: transparent;
+    border: 1px solid #00ffcc;
+    color: #00ffcc;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-shadow: 0 0 8px #00ffcc;
+    box-shadow: 0 0 12px #00ffcc22, inset 0 0 12px #00ffcc11;
+  }
+  #startBtn:hover {
+    background: #00ffcc22;
+    box-shadow: 0 0 20px #00ffcc44, inset 0 0 20px #00ffcc22;
+  }
+
+  /* 動体検知エリア表示 */
+  #motionCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    opacity: 0.35;
+  }
+
+  #noCamera {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    opacity: 0.5;
+  }
+  #noCamera p { margin-top: 8px; font-size: 12px; letter-spacing: 0.2em; }
+
+  /* スキャンライン */
+  #scanline {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- カメラ映像描画 -->
+  <canvas id="videoCanvas"></canvas>
+  <!-- 動体検知マスク描画 -->
+  <canvas id="motionCanvas"></canvas>
+  <!-- パーティクル描画 -->
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- スキャンライン -->
+  <div id="scanline"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-corner tl"></div>
+    <div class="hud-corner tr"></div>
+    <div class="hud-corner bl"></div>
+    <div class="hud-corner br"></div>
+    <div id="stats">
+      PARTICLES: <span id="statParticles">0</span><br>
+      MOTION ZONES: <span id="statZones">0</span><br>
+      FPS: <span id="statFps">0</span><br>
+      HUE: <span id="statHue">170</span>°
+    </div>
+    <div id="label">MOTION TRACKER</div>
+  </div>
+
+  <!-- カメラなし表示 -->
+  <div id="noCamera">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00ffcc" stroke-width="1">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    <p>CAMERA ACCESS REQUIRED</p>
+  </div>
+
+  <!-- コントロール -->
+  <div id="controls">
+    <button id="startBtn">■ STOP</button>
+    <div class="ctrl-group">
+      <span class="ctrl-label">THRESHOLD</span>
+      <input type="range" id="threshSlider" min="5" max="60" value="20">
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">PARTICLE SPEED</span>
+      <input type="range" id="speedSlider" min="1" max="20" value="7">
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">LIFETIME</span>
+      <input type="range" id="lifeSlider" min="10" max="120" value="45">
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">DENSITY</span>
+      <input type="range" id="densitySlider" min="1" max="10" value="4">
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">HUE SPEED</span>
+      <input type="range" id="hueSpeedSlider" min="0" max="5" step="0.1" value="0.3">
+    </div>
+  </div>
+</div>
+
+<video id="video" style="display:none" playsinline autoplay muted></video>
+
+<script>
+// =====================================================
+//  設定
+// =====================================================
+const CFG = {
+  GRID_SIZE: 4,
+  DIFF_THRESHOLD: 20,
+  SPEED_SCALE: 14,
+  PARTICLE_LIFE: 10,
+  SPAWN_DENSITY: 1,
+  DAMPING: 0.94,
+  GRAVITY: -0.15,
+  BLUR_TRAIL: 0.18,
+  HUE_CYCLE_SPEED: 0.9,
+};
+
+let globalHue = 170;
+
+// =====================================================
+//  DOM / Canvas
+// =====================================================
+const video          = document.getElementById('video');
+const videoCanvas    = document.getElementById('videoCanvas');
+const motionCanvas   = document.getElementById('motionCanvas');
+const particleCanvas = document.getElementById('particleCanvas');
+
+const vCtx = videoCanvas.getContext('2d');
+const mCtx = motionCanvas.getContext('2d');
+
+// ⑤ グロー用: blurレイヤー（CSS blur）+ シャープレイヤーの2枚構成
+const blurCanvas  = document.createElement('canvas');
+const sharpCanvas = document.createElement('canvas');
+blurCanvas.style.cssText  = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;filter:blur(5px);opacity:0.55;';
+sharpCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
+// particleCanvas の位置に2枚挿入（particleCanvas自体は非表示化）
+particleCanvas.style.display = 'none';
+particleCanvas.parentNode.insertBefore(blurCanvas,  particleCanvas);
+particleCanvas.parentNode.insertBefore(sharpCanvas, particleCanvas);
+
+const bCtx = blurCanvas.getContext('2d');
+const sCtx = sharpCanvas.getContext('2d');
+
+let W = 0, H = 0;
+
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  [videoCanvas, motionCanvas, blurCanvas, sharpCanvas].forEach(c => {
+    c.width = W; c.height = H;
+  });
+}
+resize();
+window.addEventListener('resize', resize);
+
+// =====================================================
+//  ② TypedArray によるパーティクルプール（GCフリー）
+// =====================================================
+const MAX_P = 30000;
+const pX    = new Float32Array(MAX_P);
+const pY    = new Float32Array(MAX_P);
+const pVX   = new Float32Array(MAX_P);
+const pVY   = new Float32Array(MAX_P);
+const pLife = new Float32Array(MAX_P); // 残寿命 (1.0 → 0)
+const pHue  = new Uint16Array(MAX_P);  // 0-359
+const pSize = new Float32Array(MAX_P);
+let pCount  = 0; // 現在アクティブな数
+
+// ④ Object Pool: 末尾スワップ削除（O(1)、配列再生成なし）
+function removeParticle(i) {
+  const last = pCount - 1;
+  pX[i]    = pX[last];
+  pY[i]    = pY[last];
+  pVX[i]   = pVX[last];
+  pVY[i]   = pVY[last];
+  pLife[i] = pLife[last];
+  pHue[i]  = pHue[last];
+  pSize[i] = pSize[last];
+  pCount--;
+}
+
+function spawnParticles(cx, cy, flowX, flowY) {
+  const speed = CFG.SPEED_SCALE;
+  for (let i = 0; i < CFG.SPAWN_DENSITY; i++) {
+    if (pCount >= MAX_P) break;
+    const idx = pCount++;
+    pX[idx]    = cx + (Math.random() - 0.5) * CFG.GRID_SIZE;
+    pY[idx]    = cy + (Math.random() - 0.5) * CFG.GRID_SIZE;
+    pVX[idx]   = -flowX * speed + (Math.random() - 0.5) * 1.5;
+    pVY[idx]   = -flowY * speed + (Math.random() - 0.5) * 1.5;
+    pLife[idx] = 1.0;
+    pHue[idx]  = ((globalHue + (Math.random() - 0.5) * 15 + 360) % 360) | 0;
+    pSize[idx] = 1.5 + Math.random() * 2.5;
+  }
+}
+
+// =====================================================
+//  パーティクル 更新（TypedArrayをインラインループ）
+// =====================================================
+const LIFE_DEC = 1.0 / CFG.PARTICLE_LIFE; // ※ライフ変化量（後でCFGに追従）
+
+function updateParticles() {
+  const lifeStep = 1.0 / Math.max(CFG.PARTICLE_LIFE, 1);
+  let i = 0;
+  while (i < pCount) {
+    pX[i]    += pVX[i];
+    pY[i]    += pVY[i];
+    pVX[i]   *= CFG.DAMPING;
+    pVY[i]   *= CFG.DAMPING;
+    pVY[i]   += CFG.GRAVITY;
+    pLife[i] -= lifeStep;
+    if (pLife[i] <= 0) {
+      removeParticle(i); // ④ 末尾スワップ → i をインクリメントしない
+    } else {
+      i++;
+    }
+  }
+}
+
+// =====================================================
+//  ③ バッチ描画（Hueバケツ × 1回fill）
+// =====================================================
+const HUE_STEP    = 10;                          // バケツ幅 (度)
+const BUCKET_NUM  = 360 / HUE_STEP;             // 36バケツ
+// 各バケツに何個あるか（毎フレームリセット）
+const bucketCount = new Int32Array(BUCKET_NUM);
+// バケツごとのインデックス一覧（固定長で確保して再利用）
+const bucketIdx   = Array.from({length: BUCKET_NUM}, () => new Int32Array(MAX_P));
+
+function drawParticles(ctx) {
+  // バケツをリセット
+  bucketCount.fill(0);
+
+  // 全パーティクルをバケツに振り分け
+  for (let i = 0; i < pCount; i++) {
+    const b = (pHue[i] / HUE_STEP | 0) % BUCKET_NUM;
+    bucketIdx[b][bucketCount[b]++] = i;
+  }
+
+  // バケツごとに1回 beginPath → 全粒arc → fill
+  for (let b = 0; b < BUCKET_NUM; b++) {
+    const cnt = bucketCount[b];
+    if (cnt === 0) continue;
+    const hue = b * HUE_STEP;
+    ctx.beginPath();
+    for (let k = 0; k < cnt; k++) {
+      const i = bucketIdx[b][k];
+      const t = pLife[i];           // 1→0
+      const r = pSize[i] * t;
+      ctx.moveTo(pX[i] + r, pY[i]);
+      ctx.arc(pX[i], pY[i], r, 0, Math.PI * 2);
+    }
+    // バケツ内で alpha は平均値を使う（個別は高コストなので省略）
+    ctx.fillStyle = `hsl(${hue}, 100%, 72%)`;
+    ctx.globalAlpha = 0.85;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1.0;
+}
+
+// =====================================================
+//  動体検知
+// =====================================================
+let prevPixels = null;
+let motionCells = [];  // ⑥ 検知結果をフレーム間で保持
+
+function toGray(pixels, w, h) {
+  const gray = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    gray[i] = (pixels[i*4]*77 + pixels[i*4+1]*150 + pixels[i*4+2]*29) >> 8;
+  }
+  return gray;
+}
+
+function detectMotion(currGray, prevGray, w, h) {
+  const grid = CFG.GRID_SIZE;
+  const cols = Math.ceil(w / grid);
+  const rows = Math.ceil(h / grid);
+  const cells = [];
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      let diffSum = 0, flowX = 0, flowY = 0, count = 0;
+      const x0 = col * grid, y0 = row * grid;
+      const x1 = Math.min(x0 + grid, w);
+      const y1 = Math.min(y0 + grid, h);
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const idx = y * w + x;
+          diffSum += Math.abs(currGray[idx] - prevGray[idx]);
+          if (x + 1 < x1) {
+            const dR = Math.abs(currGray[idx+1] - prevGray[idx]);
+            const dL = Math.abs(currGray[idx]   - prevGray[idx+1]);
+            flowX += dR > dL ? 1 : -1;
+          }
+          if (y + 1 < y1) {
+            const dD = Math.abs(currGray[(y+1)*w+x] - prevGray[idx]);
+            const dU = Math.abs(currGray[idx]        - prevGray[(y+1)*w+x]);
+            flowY += dD > dU ? 1 : -1;
+          }
+          count++;
+        }
+      }
+      if (diffSum / count > CFG.DIFF_THRESHOLD) {
+        cells.push({
+          cx: (x0 + x1) / 2, cy: (y0 + y1) / 2,
+          intensity: Math.min(diffSum / count / 100, 1),
+          flowX: flowX / count, flowY: flowY / count,
+        });
+      }
+    }
+  }
+  return cells;
+}
+
+// =====================================================
+//  メインループ
+// =====================================================
+let isRunning = false;
+let animId    = null;
+let frameCount = 0;
+let fpsFrames  = 0, fpsLast = performance.now();
+
+const PROC_W = 320, PROC_H = 240;
+const procCanvas = document.createElement('canvas');
+procCanvas.width = PROC_W; procCanvas.height = PROC_H;
+const procCtx = procCanvas.getContext('2d');
+
+function loop() {
+  animId = requestAnimationFrame(loop);
+  if (video.readyState < 2) return;
+  frameCount++;
+
+  // カメラ映像描画（毎フレーム）
+  vCtx.save();
+  vCtx.translate(W, 0); vCtx.scale(-1, 1);
+  vCtx.drawImage(video, 0, 0, W, H);
+  vCtx.restore();
+
+  // ⑥ 動体検知は2フレームに1回
+  if (frameCount % 2 === 0) {
+    procCtx.save();
+    procCtx.translate(PROC_W, 0); procCtx.scale(-1, 1);
+    procCtx.drawImage(video, 0, 0, PROC_W, PROC_H);
+    procCtx.restore();
+    const imgData  = procCtx.getImageData(0, 0, PROC_W, PROC_H);
+    const currGray = toGray(imgData.data, PROC_W, PROC_H);
+    if (prevPixels) motionCells = detectMotion(currGray, prevPixels, PROC_W, PROC_H);
+    prevPixels = currGray;
+  }
+
+  const scaleX = W / PROC_W, scaleY = H / PROC_H;
+
+  // 動体エリア可視化（毎フレーム）
+  mCtx.clearRect(0, 0, W, H);
+  for (const cell of motionCells) {
+    const gx = cell.cx * scaleX, gy = cell.cy * scaleY;
+    const gs = CFG.GRID_SIZE * Math.max(scaleX, scaleY);
+    const a  = cell.intensity * 0.4;
+    mCtx.strokeStyle = `rgba(0,255,180,${a})`;
+    mCtx.lineWidth = 1;
+    mCtx.strokeRect(gx - gs/2, gy - gs/2, gs, gs);
+    const al = 12 * cell.intensity;
+    mCtx.beginPath();
+    mCtx.moveTo(gx, gy);
+    mCtx.lineTo(gx + cell.flowX * al, gy + cell.flowY * al);
+    mCtx.strokeStyle = `rgba(255,80,100,${a*2})`;
+    mCtx.lineWidth = 1.5;
+    mCtx.stroke();
+  }
+
+  // Hue 更新
+  globalHue = (globalHue + CFG.HUE_CYCLE_SPEED + 360) % 360;
+
+  // スポーン
+  for (const cell of motionCells) {
+    spawnParticles(cell.cx * scaleX, cell.cy * scaleY, cell.flowX, cell.flowY);
+  }
+
+  // ② 更新（TypedArray インラインループ）
+  updateParticles();
+
+  // ⑤ sharpCanvas に残像付きで描画 → blurCanvas はそれをコピーしてグロー源に使う
+  // sharpレイヤー（残像あり・くっきり輪郭）
+  sCtx.fillStyle = `rgba(0,0,0,${CFG.BLUR_TRAIL})`;
+  sCtx.fillRect(0, 0, W, H);
+  drawParticles(sCtx);  // ③ バッチ描画
+
+  // blurレイヤー = sharpCanvas をそのまま転写（CSS blurでグロー化）
+  // 自身には何も蓄積しないので背景が汚れない
+  bCtx.clearRect(0, 0, W, H);
+  bCtx.drawImage(sharpCanvas, 0, 0);
+
+  // Stats（60フレームに1回DOM更新 → レイアウト再計算を減らす）
+  fpsFrames++;
+  if (frameCount % 60 === 0) {
+    const now = performance.now();
+    const fps = Math.round(60000 / (now - fpsLast));
+    fpsLast = now;
+    document.getElementById('statFps').textContent       = fps;
+    document.getElementById('statParticles').textContent = pCount;
+    document.getElementById('statZones').textContent     = motionCells.length;
+    document.getElementById('statHue').textContent       = Math.round(globalHue);
+  }
+}
+
+// =====================================================
+//  カメラ起動 / 停止
+// =====================================================
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: {ideal: 1280}, height: {ideal: 720} },
+      audio: false
+    });
+    video.srcObject = stream;
+    await video.play();
+    document.getElementById('noCamera').style.display = 'none';
+    document.getElementById('startBtn').textContent = '■ STOP';
+    isRunning  = true;
+    pCount     = 0;
+    prevPixels = null;
+    motionCells = [];
+    frameCount  = 0;
+    loop();
+  } catch (e) {
+    alert('カメラへのアクセスが拒否されました: ' + e.message);
+  }
+}
+
+function stopCamera() {
+  if (animId) cancelAnimationFrame(animId);
+  if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+  video.srcObject = null;
+  isRunning = false;
+  document.getElementById('startBtn').textContent = '► START CAMERA';
+  document.getElementById('noCamera').style.display = 'block';
+  vCtx.clearRect(0,0,W,H);
+  bCtx.clearRect(0,0,W,H);
+  sCtx.clearRect(0,0,W,H);
+  mCtx.clearRect(0,0,W,H);
+  pCount = 0;
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  isRunning ? stopCamera() : startCamera();
+});
+
+startCamera();
+
+// =====================================================
+//  スライダー
+// =====================================================
+document.getElementById('threshSlider').addEventListener('input',   e => { CFG.DIFF_THRESHOLD  = +e.target.value; });
+document.getElementById('speedSlider').addEventListener('input',    e => { CFG.SPEED_SCALE      = +e.target.value; });
+document.getElementById('lifeSlider').addEventListener('input',     e => { CFG.PARTICLE_LIFE    = +e.target.value; });
+document.getElementById('densitySlider').addEventListener('input',  e => { CFG.SPAWN_DENSITY    = +e.target.value; });
+document.getElementById('hueSpeedSlider').addEventListener('input', e => { CFG.HUE_CYCLE_SPEED  = +e.target.value; });
+</script>
+</body>
+</html>
