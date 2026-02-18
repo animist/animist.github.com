@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCAN FREEZE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bar-color: #00ffcc;
+    --ui: #00ffcc;
+    --dim: rgba(0,255,204,0.15);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--ui);
+  }
+
+  /* スキャンライン overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,255,204,0.012) 2px,
+      rgba(0,255,204,0.012) 4px
+    );
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  /* ---- 映像レイヤー ---- */
+  #live {
+    position: fixed;
+    inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+
+  #frozen {
+    position: fixed;
+    inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  /* ---- スキャンバー ---- */
+  #bar {
+    position: fixed;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      var(--bar-color) 15%,
+      #ffffff 50%,
+      var(--bar-color) 85%,
+      transparent 100%
+    );
+    box-shadow: 0 0 16px 5px rgba(0,255,204,0.55), 0 0 3px 1px #fff;
+    pointer-events: none;
+    transform: translateX(-50%);
+    z-index: 30;
+  }
+  #bar::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 100%;
+    background: linear-gradient(to left, rgba(0,255,204,0.06), transparent);
+  }
+  #bar::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -60px;
+    width: 60px; height: 100%;
+    background: linear-gradient(to right, rgba(0,255,204,0.06), transparent);
+  }
+
+  /* ---- オフスクリーン ---- */
+  #offscreen { display: none; }
+
+  /* ---- UI オーバーレイ ---- */
+  #ui {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    border: 1px solid rgba(0,255,204,0.2);
+    border-radius: 2px;
+    padding: 16px 28px 14px;
+    box-shadow: 0 0 30px rgba(0,255,204,0.06);
+    min-width: 360px;
+  }
+
+  #title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 300;
+    font-size: 0.75rem;
+    letter-spacing: 0.55em;
+    opacity: 0.4;
+    text-transform: uppercase;
+    align-self: flex-start;
+  }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+  }
+
+  button {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 7px 18px;
+    background: transparent;
+    border: 1px solid rgba(0,255,204,0.5);
+    color: var(--ui);
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+  }
+  button:hover {
+    background: var(--dim);
+    box-shadow: 0 0 10px rgba(0,255,204,0.25);
+  }
+  button:active { background: rgba(0,255,204,0.2); }
+
+  .speed-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    opacity: 0.7;
+    margin-left: auto;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 80px;
+    height: 2px;
+    background: rgba(0,255,204,0.3);
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--ui);
+    box-shadow: 0 0 5px var(--ui);
+    cursor: pointer;
+  }
+
+  #status {
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    opacity: 0.4;
+    align-self: flex-start;
+  }
+
+  /* 進捗バー */
+  #progress-wrap {
+    width: 100%;
+    height: 2px;
+    background: rgba(0,255,204,0.1);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  #progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--ui);
+    box-shadow: 0 0 6px var(--ui);
+  }
+
+  /* 待機カウントダウンリング */
+  #wait-ring {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 60;
+    pointer-events: none;
+  }
+  #wait-ring svg { display: block; }
+  #wait-ring .num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 300;
+    font-size: 2.6rem;
+    letter-spacing: 0.05em;
+    color: var(--ui);
+    text-shadow: 0 0 24px var(--ui);
+  }
+</style>
+</head>
+<body>
+
+<video id="live" autoplay muted playsinline></video>
+<canvas id="frozen"></canvas>
+<canvas id="offscreen"></canvas>
+<div id="bar"></div>
+
+<!-- 待機カウントダウンリング -->
+<div id="wait-ring">
+  <svg width="100" height="100" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(0,255,204,0.12)" stroke-width="2"/>
+    <circle id="ring-arc" cx="50" cy="50" r="42" fill="none"
+      stroke="#00ffcc" stroke-width="2"
+      stroke-dasharray="263.89" stroke-dashoffset="263.89"
+      stroke-linecap="round"
+      transform="rotate(-90 50 50)"
+      style="filter: drop-shadow(0 0 5px #00ffcc);"/>
+  </svg>
+  <div class="num" id="ring-num">3</div>
+</div>
+
+<!-- UIパネル -->
+<div id="ui">
+  <div id="title">▸ Scan Freeze Effect</div>
+  <div class="controls">
+    <button id="btnStart">カメラ起動</button>
+    <button id="btnReset">リセット</button>
+    <div class="speed-wrap">
+      SPD
+      <input type="range" id="speedSlider" min="0.5" max="8" step="0.1" value="2">
+      <span id="speedVal">2.0</span>
+    </div>
+  </div>
+  <div id="progress-wrap"><div id="progress-bar"></div></div>
+  <div id="status">カメラ起動ボタンを押してください</div>
+</div>
+
+<script>
+const video       = document.getElementById('live');
+const frozen      = document.getElementById('frozen');
+const bar         = document.getElementById('bar');
+const offscreen   = document.getElementById('offscreen');
+const btnStart    = document.getElementById('btnStart');
+const btnReset    = document.getElementById('btnReset');
+const speedSlider = document.getElementById('speedSlider');
+const speedVal    = document.getElementById('speedVal');
+const statusEl    = document.getElementById('status');
+const progressBar = document.getElementById('progress-bar');
+const waitRing    = document.getElementById('wait-ring');
+const ringArc     = document.getElementById('ring-arc');
+const ringNum     = document.getElementById('ring-num');
+
+const CIRCUMFERENCE = 263.89;
+const WAIT_SEC = 3;
+
+let W = window.innerWidth;
+let H = window.innerHeight;
+
+const fCtx = frozen.getContext('2d');
+const oCtx = offscreen.getContext('2d');
+
+let barX = 0;
+let direction = 1;
+let speed = 2;
+let running = false;
+let hasCam = false;
+let allFrozen = false;
+let frozenCols = new Uint8Array(W);
+let frozenCount = 0;
+let countdownTimer = null;
+let animFrameId = null;
+
+function initCanvases() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  frozen.width = W; frozen.height = H;
+  offscreen.width = W; offscreen.height = H;
+}
+
+initCanvases();
+
+window.addEventListener('resize', () => {
+  initCanvases();
+  frozenCols = new Uint8Array(W);
+  frozenCount = 0;
+  allFrozen = false;
+  fCtx.clearRect(0, 0, W, H);
+  progressBar.style.width = '0%';
+});
+
+speedSlider.addEventListener('input', () => {
+  speed = parseFloat(speedSlider.value);
+  speedVal.textContent = speed.toFixed(1);
+});
+
+// カメラ起動（初回のみ）
+let camStarted = false;
+btnStart.addEventListener('click', async () => {
+  if (!camStarted) {
+    camStarted = true;
+    try {
+      statusEl.textContent = 'カメラアクセス中...';
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user' },
+        audio: false
+      });
+      video.srcObject = stream;
+      await video.play();
+      hasCam = true;
+      running = true;
+      statusEl.textContent = 'SCANNING...';
+      btnStart.textContent = '停止';
+      loop();
+    } catch(e) {
+      camStarted = false;
+      statusEl.textContent = 'カメラエラー: ' + e.message;
+    }
+  } else {
+    // 2回目以降はポーズ切替
+    togglePause();
+  }
+});
+
+function togglePause() {
+  if (!hasCam) return;
+  running = !running;
+  btnStart.textContent = running ? '停止' : '再開';
+  statusEl.textContent = running ? 'SCANNING...' : 'PAUSED';
+  if (running) loop();
+}
+
+btnReset.addEventListener('click', reset);
+
+function scheduleNextScan() {
+  waitRing.style.display = 'block';
+
+  // リングアニメーション：WAIT_SEC秒かけて一周
+  ringArc.style.transition = 'none';
+  ringArc.style.strokeDashoffset = CIRCUMFERENCE;
+  void ringArc.getBoundingClientRect(); // reflow
+  ringArc.style.transition = `stroke-dashoffset ${WAIT_SEC}s linear`;
+  ringArc.style.strokeDashoffset = '0';
+
+  let remaining = WAIT_SEC;
+  ringNum.textContent = remaining;
+
+  function tick() {
+    remaining--;
+    ringNum.textContent = remaining;
+    if (remaining <= 0) {
+      waitRing.style.display = 'none';
+      countdownTimer = null;
+      reset();
+    } else {
+      countdownTimer = setTimeout(tick, 1000);
+    }
+  }
+  countdownTimer = setTimeout(tick, 1000);
+}
+
+function reset() {
+  if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null; }
+  waitRing.style.display = 'none';
+  frozenCols = new Uint8Array(W);
+  frozenCount = 0;
+  allFrozen = false;
+  fCtx.clearRect(0, 0, W, H);
+  barX = 0;
+  direction = 1;
+  progressBar.style.width = '0%';
+  if (hasCam && !running) {
+    running = true;
+    btnStart.textContent = '停止';
+    statusEl.textContent = 'SCANNING...';
+    loop();
+  }
+}
+
+function loop() {
+  if (!running) return;
+  animFrameId = requestAnimationFrame(loop);
+
+  // オフスクリーンにライブ映像（ミラー反転）
+  oCtx.save();
+  oCtx.translate(W, 0);
+  oCtx.scale(-1, 1);
+  oCtx.drawImage(video, 0, 0, W, H);
+  oCtx.restore();
+
+  if (!allFrozen) {
+    const bw = Math.max(1, Math.ceil(speed * 1.2));
+    const x0 = Math.max(0, Math.round(barX) - Math.floor(bw / 2));
+    const x1 = Math.min(W - 1, x0 + bw);
+
+    for (let x = x0; x <= x1; x++) {
+      if (!frozenCols[x]) {
+        const col = oCtx.getImageData(x, 0, 1, H);
+        fCtx.putImageData(col, x, 0);
+        frozenCols[x] = 1;
+        frozenCount++;
+      }
+    }
+
+    progressBar.style.width = Math.min(100, (frozenCount / W * 100)).toFixed(1) + '%';
+
+    if (frozenCount >= W) {
+      allFrozen = true;
+      running = false;
+      statusEl.textContent = 'FREEZE COMPLETE';
+      bar.style.display = 'none';
+      scheduleNextScan();
+      return;
+    }
+
+    barX += speed * direction;
+    if (barX >= W) { barX = W - 1; direction = -1; }
+    if (barX <= 0)  { barX = 0;    direction =  1; }
+  }
+
+  bar.style.display = 'block';
+  bar.style.left = barX + 'px';
+}
+</script>
+</body>
+</html>
