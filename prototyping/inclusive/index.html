@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>建築アクセシビリティ評価ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --warn: #f0883e;
+    --danger: #f85149;
+    --ok: #3fb950;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --blueprint: #1a2744;
+    --blueprint-line: #2d4a8a;
+    --blueprint-bright: #4d7cc4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+  }
+
+  .header-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Space Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .badge {
+    margin-left: auto;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .plan-area {
+    flex: 1;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  .floor-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+
+  .floor-wrapper {
+    background: var(--blueprint);
+    border: 1px solid var(--blueprint-line);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+  }
+
+  .floor-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    background-image: 
+      linear-gradient(var(--blueprint-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--blueprint-line) 1px, transparent 1px);
+    background-size: 20px 20px;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  .floor-plan {
+    position: relative;
+    width: 100%;
+  }
+
+  .floor-plan svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Area overlays */
+  .area-overlay {
+    position: absolute;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .area-overlay:hover {
+    transform: scale(1.02);
+    z-index: 10;
+  }
+
+  .area-name {
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.3;
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+
+  .area-score {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(0,0,0,0.5);
+    padding: 2px 6px;
+    border-radius: 10px;
+    pointer-events: none;
+  }
+
+  .score-ok { background: rgba(63,185,80,0.25); border: 1.5px solid rgba(63,185,80,0.6); color: #3fb950; }
+  .score-warn { background: rgba(240,136,62,0.25); border: 1.5px solid rgba(240,136,62,0.6); color: #f0883e; }
+  .score-danger { background: rgba(248,81,73,0.25); border: 1.5px solid rgba(248,81,73,0.6); color: #f85149; }
+
+  .score-label-ok { color: var(--ok); }
+  .score-label-warn { color: var(--warn); }
+  .score-label-danger { color: var(--danger); }
+
+  /* Sidebar */
+  .sidebar {
+    width: 360px;
+    min-width: 360px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px 24px;
+    text-align: center;
+    gap: 12px;
+    opacity: 0.5;
+  }
+
+  .placeholder-icon {
+    font-size: 40px;
+    opacity: 0.5;
+  }
+
+  .placeholder p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .area-detail {
+    display: none;
+    padding: 24px;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .area-detail.active {
+    display: flex;
+  }
+
+  .area-detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .area-detail-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+  }
+
+  .area-detail-name {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .area-detail-floor {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Space Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .score-bar-wrapper {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .score-bar-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .score-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .score-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .issues-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .issue-card {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 14px;
+    border-left: 3px solid;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .issue-card.danger { border-color: var(--danger); }
+  .issue-card.warn { border-color: var(--warn); }
+  .issue-card.ok { border-color: var(--ok); }
+
+  .issue-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .issue-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+  }
+
+  .issue-tag.danger { background: rgba(248,81,73,0.15); color: var(--danger); }
+  .issue-tag.warn { background: rgba(240,136,62,0.15); color: var(--warn); }
+  .issue-tag.ok { background: rgba(63,185,80,0.15); color: var(--ok); }
+
+  .issue-title {
+    font-size: 13px;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .issue-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .assertion {
+    background: rgba(88,166,255,0.08);
+    border: 1px solid rgba(88,166,255,0.3);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--accent);
+  }
+
+  .assertion::before {
+    content: '💡 提案: ';
+    font-weight: 700;
+  }
+
+  /* Legend */
+  .legend {
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .legend-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-right: 4px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* Floor image container */
+  .floor-image-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .floor-image-container img {
+    width: 100%;
+    height: auto;
+    display: block;
+    opacity: 0.15;
+    filter: invert(1) hue-rotate(200deg);
+  }
+
+  .areas-layer {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .overall-summary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .summary-item {
+    flex: 1;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .summary-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .summary-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon">♿</div>
+  <div>
+    <h1>ACCESSIBILITY EVALUATOR</h1>
+    <div class="subtitle">建築アクセシビリティ評価システム · Floor Plan Analysis</div>
+  </div>
+  <div class="badge">プロトタイプ v0.1</div>
+</header>
+
+<div class="main">
+  <div class="plan-area">
+
+    <!-- 2F -->
+    <div>
+      <div class="floor-label">▲ 2F — Second Floor</div>
+      <div class="floor-wrapper">
+        <div class="floor-image-container" id="floor2">
+          <!-- SVG representation of 2F -->
+          <svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+            <!-- Background -->
+            <rect width="600" height="280" fill="none"/>
+            <!-- LDK -->
+            <rect x="10" y="10" width="340" height="200" fill="rgba(45,74,138,0.3)" stroke="#4d7cc4" stroke-width="2" rx="4"/>
+            <text x="165" y="100" text-anchor="middle" fill="#8ab4e8" font-size="14" font-family="'Space Mono',monospace">LDK · 10J</text>
+            <!-- Japanese Room -->
+            <rect x="360" y="10" width="230" height="160" fill="rgba(45,74,138,0.3)" stroke="#4d7cc4" stroke-width="2" rx="4"/>
+            <text x="475" y="85" text-anchor="middle" fill="#8ab4e8" font-size="13" font-family="'Space Mono',monospace">和室 · 5.3J</text>
+            <!-- Balcony -->
+            <rect x="360" y="178" width="230" height="62" fill="rgba(45,74,138,0.15)" stroke="#4d7cc4" stroke-width="1.5" stroke-dasharray="6,4" rx="4"/>
+            <text x="475" y="215" text-anchor="middle" fill="#6a94c4" font-size="12" font-family="'Space Mono',monospace">Balcony</text>
+            <!-- Bathroom area -->
+            <rect x="10" y="218" width="180" height="52" fill="rgba(45,74,138,0.2)" stroke="#4d7cc4" stroke-width="1.5" rx="4"/>
+            <text x="100" y="248" text-anchor="middle" fill="#6a94c4" font-size="11" font-family="'Space Mono',monospace">Bath / WC / 洗面</text>
+            <!-- Hallway/stairs -->
+            <rect x="200" y="218" width="150" height="52" fill="rgba(45,74,138,0.15)" stroke="#4d7cc4" stroke-width="1.5" rx="4"/>
+            <text x="275" y="248" text-anchor="middle" fill="#6a94c4" font-size="11" font-family="'Space Mono',monospace">廊下 / 階段</text>
+          </svg>
+          <div class="areas-layer" id="areas2f"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1F -->
+    <div>
+      <div class="floor-label">▼ 1F — First Floor</div>
+      <div class="floor-wrapper">
+        <div class="floor-image-container" id="floor1">
+          <svg viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+            <rect width="600" height="300" fill="none"/>
+            <!-- Flooring Room 8.2J -->
+            <rect x="10" y="10" width="190" height="280" fill="rgba(45,74,138,0.3)" stroke="#4d7cc4" stroke-width="2" rx="4"/>
+            <text x="105" y="150" text-anchor="middle" fill="#8ab4e8" font-size="13" font-family="'Space Mono',monospace">洋室 · 8.2J</text>
+            <!-- Shed -->
+            <rect x="210" y="10" width="175" height="120" fill="rgba(45,74,138,0.2)" stroke="#4d7cc4" stroke-width="2" rx="4"/>
+            <text x="297" y="70" text-anchor="middle" fill="#6a94c4" font-size="13" font-family="'Space Mono',monospace">物置 / Shed</text>
+            <!-- CL -->
+            <rect x="395" y="10" width="80" height="120" fill="rgba(45,74,138,0.15)" stroke="#4d7cc4" stroke-width="1.5" rx="4"/>
+            <text x="435" y="70" text-anchor="middle" fill="#6a94c4" font-size="11" font-family="'Space Mono',monospace">CL</text>
+            <!-- Flooring Room 6.3J -->
+            <rect x="485" y="10" width="105" height="280" fill="rgba(45,74,138,0.3)" stroke="#4d7cc4" stroke-width="2" rx="4"/>
+            <text x="537" y="150" text-anchor="middle" fill="#8ab4e8" font-size="13" font-family="'Space Mono',monospace">洋室<tspan x="537" dy="18">6.3J</tspan></text>
+            <!-- Hall/Entrance -->
+            <rect x="210" y="140" width="265" height="150" fill="rgba(45,74,138,0.2)" stroke="#4d7cc4" stroke-width="1.5" rx="4"/>
+            <text x="342" y="220" text-anchor="middle" fill="#6a94c4" font-size="12" font-family="'Space Mono',monospace">玄関 / ホール / 階段</text>
+          </svg>
+          <div class="areas-layer" id="areas1f"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">EVALUATION PANEL</div>
+    </div>
+    <div class="sidebar-content" id="sidebarContent">
+      <div class="placeholder" id="placeholder">
+        <div class="placeholder-icon">🏠</div>
+        <p>各エリアをクリックして<br>アクセシビリティ評価を確認</p>
+      </div>
+
+      <!-- Area detail panels (hidden by default) -->
+      <div id="detail-ldk" class="area-detail"></div>
+      <div id="detail-japanese" class="area-detail"></div>
+      <div id="detail-balcony" class="area-detail"></div>
+      <div id="detail-bathroom" class="area-detail"></div>
+      <div id="detail-stairs2f" class="area-detail"></div>
+      <div id="detail-room82" class="area-detail"></div>
+      <div id="detail-room63" class="area-detail"></div>
+      <div id="detail-entrance" class="area-detail"></div>
+      <div id="detail-shed" class="area-detail"></div>
+    </div>
+    <div class="legend">
+      <span class="legend-label">凡例:</span>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--ok)"></div><span>良好</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div><span>要改善</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div><span>重大問題</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const areaData = {
+  ldk: {
+    name: 'LDK',
+    nameJa: 'リビング・ダイニング・キッチン',
+    floor: '2F',
+    icon: '🍳',
+    score: 62,
+    issues: [
+      {
+        level: 'warn',
+        title: 'キッチンカウンターの高さ',
+        desc: '標準的なカウンター高さ(85cm)は車椅子ユーザーには高すぎる場合があります。高さ調整可能なカウンターが推奨されます。',
+        assertion: 'カウンター高さを72〜75cmに調整するか、車椅子対応の昇降式カウンターの導入を検討してください。'
+      },
+      {
+        level: 'warn',
+        title: '2Fへのアクセス（階段のみ）',
+        desc: 'LDKが2Fに配置されており、階段のみでのアクセスは移動に困難を抱える方に大きな障壁です。',
+        assertion: 'ホームエレベーターまたは階段昇降機の設置スペースを確保してください。1F・2F間の垂直移動の改善が最優先課題です。'
+      },
+      {
+        level: 'ok',
+        title: '広さの確保',
+        desc: '10畳（約16.5m²）の広さは車椅子の回転（直径150cm）に十分な空間を確保できます。',
+        assertion: null
+      }
+    ]
+  },
+  japanese: {
+    name: '和室 5.3J',
+    nameJa: '日本間（畳）',
+    floor: '2F',
+    icon: '🏮',
+    score: 38,
+    issues: [
+      {
+        level: 'danger',
+        title: '畳と廊下の段差',
+        desc: '和室の畳は通常30〜40mmの高さがあり、車椅子や歩行補助具のユーザーには大きな障壁となります。',
+        assertion: '畳床を下げてフラットにする「フラット畳」仕様に変更するか、スロープ付き框（かまち）を設置してください。'
+      },
+      {
+        level: 'danger',
+        title: '引き戸の有効幅',
+        desc: '一般的な引き戸の有効幅（750mm程度）は車椅子（有効幅800mm以上推奨）には不十分です。',
+        assertion: '有効開口幅を850mm以上に拡幅してください。引き戸は開き戸より省スペースで優れた選択です。'
+      },
+      {
+        level: 'warn',
+        title: '床座スタイルの問題',
+        desc: '和室での床座は高齢者や下肢障害のある方にとって立ち上がりが困難です。',
+        assertion: '小上がり式（高さ40cm程度）にすることで椅子代わりに座れる和室に改修できます。手すりも合わせて設置してください。'
+      }
+    ]
+  },
+  balcony: {
+    name: 'Balcony',
+    nameJa: 'バルコニー',
+    floor: '2F',
+    icon: '🌿',
+    score: 45,
+    issues: [
+      {
+        level: 'warn',
+        title: '掃き出し窓の段差',
+        desc: 'バルコニーへの出入り口に生じる段差（20mm以上）は転倒リスクを高めます。',
+        assertion: 'フラットサッシ（段差ゼロ）を採用するか、スロープ板を設置して段差を解消してください。'
+      },
+      {
+        level: 'warn',
+        title: 'バルコニー幅員',
+        desc: '図面上のバルコニー奥行きが浅い場合、車椅子での転回（150cm必要）が困難になります。',
+        assertion: 'バルコニー奥行きを最低150cm確保してください。これにより車椅子での外気浴が可能になります。'
+      }
+    ]
+  },
+  bathroom: {
+    name: '水回り',
+    nameJa: 'バス・トイレ・洗面所',
+    floor: '2F',
+    icon: '🚿',
+    score: 30,
+    issues: [
+      {
+        level: 'danger',
+        title: 'バスルームの広さ不足',
+        desc: '介助が必要な場合、浴室には介助者スペース（1.25坪以上）が必要ですが、一般的な1坪サイズでは不十分です。',
+        assertion: '1.25〜1.5坪への拡張を検討してください。または介護対応ユニットバス（手すり・シャワーチェア・バスリフト対応）への変更を推奨します。'
+      },
+      {
+        level: 'danger',
+        title: '出入り口の開き戸',
+        desc: '浴室の開き戸は、内側に倒れた際の救出を妨げます。また開閉に広いスペースが必要です。',
+        assertion: '引き戸または折り戸に変更し、鍵はコイン解錠式（外から開放可能）にしてください。'
+      },
+      {
+        level: 'danger',
+        title: 'トイレの有効面積',
+        desc: '車椅子での利用には幅80cm×奥行120cm以上が必要ですが、標準的なトイレではこれを満たさない場合があります。',
+        assertion: 'トイレへの横移乗スペース（便器の片側70cm以上）を確保し、L型手すりを設置してください。'
+      },
+      {
+        level: 'warn',
+        title: '洗面台の高さ・膝下空間',
+        desc: '標準洗面台は車椅子での使用を想定していません。',
+        assertion: '洗面台下部に膝下スペース（高さ65cm以上・奥行30cm以上）を確保したバリアフリー対応洗面台に変更してください。'
+      }
+    ]
+  },
+  stairs2f: {
+    name: '廊下・階段',
+    nameJa: '2F ホール・階段',
+    floor: '2F',
+    icon: '🪜',
+    score: 25,
+    issues: [
+      {
+        level: 'danger',
+        title: '階段のみによる垂直移動',
+        desc: '1F〜2F間の移動手段が階段のみの場合、車椅子ユーザーや足腰の弱い方は2Fの全設備（LDK・和室・バス）にアクセス不能となります。',
+        assertion: '最優先でホームエレベーター（0.5坪程度）または階段昇降機の設置を計画してください。将来の設置を見越したスペース確保も有効です。'
+      },
+      {
+        level: 'warn',
+        title: '手すりの設置状況',
+        desc: '階段両側の手すりの有無が図面から確認できません。',
+        assertion: '階段の両側に手すり（高さ75〜85cm、φ35mm程度）を連続して設置してください。踊り場にも水平部分の手すりを設けてください。'
+      },
+      {
+        level: 'warn',
+        title: '廊下有効幅',
+        desc: '廊下幅が78cm未満の場合、車椅子の通行が困難です。',
+        assertion: '廊下有効幅を最低85cm（理想は90cm以上）確保してください。'
+      }
+    ]
+  },
+  room82: {
+    name: '洋室 8.2J',
+    nameJa: 'フローリング洋室（大）',
+    floor: '1F',
+    icon: '🛏',
+    score: 72,
+    issues: [
+      {
+        level: 'ok',
+        title: '広さは十分',
+        desc: '8.2畳（約13.5m²）は介護ベッド設置後も車椅子の回転スペースを確保できます。',
+        assertion: null
+      },
+      {
+        level: 'warn',
+        title: 'ドア有効幅の確認が必要',
+        desc: '車椅子通行に必要な有効幅80cm以上が確保されているか確認が必要です。',
+        assertion: '開口部有効幅を850mm以上に設定し、レバーハンドル式の引き戸を採用してください。段差のないフラットな框を設けてください。'
+      },
+      {
+        level: 'ok',
+        title: '1Fにある強み',
+        desc: '1Fに配置されているため、将来の主寝室としての転用が容易です。外部への動線も確保しやすい位置です。',
+        assertion: null
+      }
+    ]
+  },
+  room63: {
+    name: '洋室 6.3J',
+    nameJa: 'フローリング洋室（小）',
+    floor: '1F',
+    icon: '🪑',
+    score: 65,
+    issues: [
+      {
+        level: 'ok',
+        title: 'フローリング床材',
+        desc: '畳と異なりフラットなフローリングは車椅子・歩行補助具に適しています。',
+        assertion: null
+      },
+      {
+        level: 'warn',
+        title: '6.3畳での車椅子回転',
+        desc: '6.3畳（約10.4m²）は家具配置によっては車椅子の転回が困難になる場合があります。',
+        assertion: '家具は壁際に配置し、中央部に直径150cm以上のスペースを確保してください。'
+      },
+      {
+        level: 'warn',
+        title: 'ドア有効幅',
+        desc: '開口部の有効幅が80cm未満の場合、車椅子通行に支障が生じます。',
+        assertion: 'ドア幅を850mm以上に拡張するか、引き戸に変更してください。'
+      }
+    ]
+  },
+  entrance: {
+    name: '玄関・ホール',
+    nameJa: '玄関・廊下・階段（1F）',
+    floor: '1F',
+    icon: '🚪',
+    score: 40,
+    issues: [
+      {
+        level: 'danger',
+        title: '玄関の上がり框段差',
+        desc: '一般的な上がり框は150〜180mmの段差があり、車椅子や歩行補助具のユーザーには大きな障壁です。',
+        assertion: '段差を60mm以下に抑えるか、玄関横にスロープ（勾配1/12以下）を設置してください。上がり框に縦型手すりも必須です。'
+      },
+      {
+        level: 'danger',
+        title: 'アプローチ・外構段差',
+        desc: '外部からのアプローチに段差がある場合、屋内のバリアフリー化が無意味になります。',
+        assertion: '玄関外のアプローチに段差がある場合、スロープ（幅90cm以上・勾配1/12以下）を設置してください。駐車スペースからのルートも合わせて検討してください。'
+      },
+      {
+        level: 'warn',
+        title: 'ホール有効幅',
+        desc: 'ホールが狭いと車椅子での方向転換が困難です。',
+        assertion: 'ホール幅は最低120cm（理想150cm）確保し、回転スペース（150cm×150cm）を設けてください。'
+      }
+    ]
+  },
+  shed: {
+    name: '物置 (Shed)',
+    nameJa: '物置・収納',
+    floor: '1F',
+    icon: '📦',
+    score: 55,
+    issues: [
+      {
+        level: 'warn',
+        title: '収納アクセスの高さ',
+        desc: '高い位置の収納棚は車椅子ユーザーや高齢者には届きません。',
+        assertion: '収納の主要な使用域を床から40〜130cmの高さに集中させてください。プルアウト式の収納棚の導入も効果的です。'
+      },
+      {
+        level: 'ok',
+        title: '1F配置は良好',
+        desc: '1Fに物置があることで、重い荷物の運搬時に階段を使わずに済みます。',
+        assertion: null
+      }
+    ]
+  }
+};
+
+function getScoreClass(score) {
+  if (score >= 70) return 'ok';
+  if (score >= 50) return 'warn';
+  return 'danger';
+}
+
+function getScoreColor(score) {
+  if (score >= 70) return 'var(--ok)';
+  if (score >= 50) return 'var(--warn)';
+  return 'var(--danger)';
+}
+
+function renderDetail(id) {
+  const d = areaData[id];
+  const el = document.getElementById(`detail-${id}`);
+  const scoreClass = getScoreClass(d.score);
+  const scoreColor = getScoreColor(d.score);
+
+  const issueCards = d.issues.map(issue => `
+    <div class="issue-card ${issue.level}">
+      <div class="issue-top">
+        <span class="issue-tag ${issue.level}">${issue.level === 'danger' ? '🔴 重大' : issue.level === 'warn' ? '🟡 要改善' : '🟢 良好'}</span>
+        <span class="issue-title">${issue.title}</span>
+      </div>
+      <div class="issue-desc">${issue.desc}</div>
+      ${issue.assertion ? `<div class="assertion">${issue.assertion}</div>` : ''}
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="area-detail-header">
+      <div class="area-detail-icon">${d.icon}</div>
+      <div>
+        <div class="area-detail-name">${d.name}</div>
+        <div class="area-detail-floor">${d.nameJa} · ${d.floor}</div>
+      </div>
+    </div>
+    <div class="score-bar-wrapper">
+      <div class="score-bar-label">
+        <span>アクセシビリティスコア</span>
+        <span class="score-value" style="color:${scoreColor}">${d.score}<span style="font-size:13px;color:var(--text-muted)">/100</span></span>
+      </div>
+      <div class="score-bar">
+        <div class="score-bar-fill" style="width:${d.score}%;background:${scoreColor}"></div>
+      </div>
+    </div>
+    <div class="issues-section">
+      <div class="section-title">評価項目 · ${d.issues.length}件</div>
+      ${issueCards}
+    </div>
+  `;
+}
+
+function showDetail(id) {
+  // Hide all
+  document.querySelectorAll('.area-detail').forEach(el => el.classList.remove('active'));
+  document.getElementById('placeholder').style.display = 'none';
+  // Show selected
+  const detail = document.getElementById(`detail-${id}`);
+  detail.classList.add('active');
+  detail.scrollTop = 0;
+}
+
+// Initialize detail content
+Object.keys(areaData).forEach(id => renderDetail(id));
+
+// Create area overlays
+function createOverlays(containerId, areas) {
+  const container = document.getElementById(containerId);
+  areas.forEach(a => {
+    const div = document.createElement('div');
+    div.className = `area-overlay score-${getScoreClass(areaData[a.id].score)}`;
+    div.style.cssText = `left:${a.x}%;top:${a.y}%;width:${a.w}%;height:${a.h}%;`;
+    div.innerHTML = `
+      <span class="area-name">${areaData[a.id].name}</span>
+      <span class="area-score score-label-${getScoreClass(areaData[a.id].score)}">${areaData[a.id].score}</span>
+    `;
+    div.addEventListener('click', () => showDetail(a.id));
+    container.appendChild(div);
+  });
+}
+
+// 2F areas (percentages relative to SVG viewBox 600x280)
+createOverlays('areas2f', [
+  { id: 'ldk',      x: 1.5, y: 3.5, w: 57, h: 72 },
+  { id: 'japanese', x: 60, y: 3.5, w: 38, h: 57 },
+  { id: 'balcony',  x: 60, y: 63.5, w: 38, h: 22 },
+  { id: 'bathroom', x: 1.5, y: 77.5, w: 30, h: 19 },
+  { id: 'stairs2f', x: 33, y: 77.5, w: 25, h: 19 },
+]);
+
+// 1F areas
+createOverlays('areas1f', [
+  { id: 'room82',   x: 1.5, y: 3.5, w: 31.5, h: 93 },
+  { id: 'shed',     x: 35, y: 3.5, w: 29, h: 40 },
+  { id: 'room63',   x: 81, y: 3.5, w: 17.5, h: 93 },
+  { id: 'entrance', x: 35, y: 46.5, w: 46, h: 50 },
+]);
+</script>
+</body>
+</html>
