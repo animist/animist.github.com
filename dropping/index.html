@@ -6,6 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#1a1a2e" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <title>Dropping</title>
     <style>
       html, body {
@@ -22,16 +23,58 @@
         -webkit-tap-highlight-color: transparent;
       }
       #game {
-        width: 100%;
-        height: 100%;
+        position: fixed;
+        inset: 0;
         display: flex;
         align-items: center;
         justify-content: center;
       }
+      /* Phaser が生成する canvas を中央寄せ（autoCenter は NO_CENTER 側にする） */
+      #game canvas {
+        display: block;
+        margin: auto;
+      }
+
+      /* 横向き時に表示する「縦にしてね」オーバーレイ */
+      #rotate-notice {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #1a1a2e;
+        color: #ffffff;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: sans-serif;
+        text-align: center;
+        gap: 18px;
+      }
+      #rotate-notice .icon {
+        font-size: 64px;
+        animation: rotate-hint 1.6s ease-in-out infinite;
+      }
+      #rotate-notice .msg {
+        font-size: 22px;
+        font-weight: bold;
+        letter-spacing: 0.05em;
+      }
+      @keyframes rotate-hint {
+        0%, 100% { transform: rotate(0deg); }
+        50% { transform: rotate(-90deg); }
+      }
+      /* 横向き（かつタッチ端末想定の小さめ画面）でオーバーレイを表示 */
+      @media (orientation: landscape) and (max-height: 600px) {
+        #rotate-notice { display: flex; }
+      }
     </style>
-    <script type="module" crossorigin src="./assets/index-CBJsbUg9.js"></script>
+    <script type="module" crossorigin src="./assets/index-CtqV1EHr.js"></script>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate-notice">
+      <div class="icon">📱</div>
+      <div class="msg">縦向きでプレイしてください</div>
+    </div>
   </body>
 </html>

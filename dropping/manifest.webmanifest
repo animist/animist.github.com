@@ -1,0 +1,10 @@
+{
+  "name": "Dropping",
+  "short_name": "Dropping",
+  "description": "落ちてくる球を隙間に通し続けるカジュアルゲーム",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e"
+}
