@@ -7,6 +7,13 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#1a1a2e" />
     <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- ゲーム内テキスト共通の丸ゴシックWebフォント（src/config/ui.ts の FONT_FAMILY と対応） -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap"
+      rel="stylesheet"
+    />
     <title>Dropping</title>
     <style>
       html, body {
@@ -46,7 +53,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        font-family: sans-serif;
+        font-family: 'M PLUS Rounded 1c', sans-serif;
         text-align: center;
         gap: 18px;
       }
@@ -68,13 +75,13 @@
         #rotate-notice { display: flex; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CtqV1EHr.js"></script>
+    <script type="module" crossorigin src="./assets/index-CTxoVOE4.js"></script>
   </head>
   <body>
     <div id="game"></div>
     <div id="rotate-notice">
       <div class="icon">📱</div>
       <div class="msg">縦向きでプレイしてください</div>
-    </div>
+    </div>
   </body>
 </html>
