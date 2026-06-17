@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#271c40"/>
+      <stop offset="1" stop-color="#15111d"/>
+    </linearGradient>
+    <radialGradient id="ball" cx="38%" cy="30%" r="72%">
+      <stop offset="0" stop-color="#fff4b8"/>
+      <stop offset="0.35" stop-color="#ffd23f"/>
+      <stop offset="0.7" stop-color="#ff8a1e"/>
+      <stop offset="1" stop-color="#ff3b3b"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#bg)"/>
+
+  <!-- 落下のモーショントレイル -->
+  <circle cx="32" cy="9" r="2.4" fill="#ffd23f" opacity="0.18"/>
+  <circle cx="32" cy="15" r="3.8" fill="#ffb830" opacity="0.28"/>
+
+  <!-- 隙間のある発光ライン -->
+  <g filter="url(#glow)">
+    <rect x="6" y="45" width="16" height="5" rx="2.5" fill="#74dcff"/>
+    <rect x="42" y="45" width="16" height="5" rx="2.5" fill="#74dcff"/>
+  </g>
+  <!-- 隙間端マーカー -->
+  <circle cx="22" cy="47.5" r="2.6" fill="#eafcff" filter="url(#glow)"/>
+  <circle cx="42" cy="47.5" r="2.6" fill="#eafcff" filter="url(#glow)"/>
+
+  <!-- 落ちてくる球（黄→赤グラデ + ハイライト） -->
+  <circle cx="32" cy="27" r="11" fill="url(#ball)" filter="url(#glow)"/>
+  <circle cx="28" cy="23" r="3" fill="#ffffff" opacity="0.8"/>
+</svg>
