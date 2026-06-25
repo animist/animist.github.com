@@ -1,3 +1,6 @@
 [submodule "movieshift"]
 	path = movieshift
 	url = https://github.com/animist/videotag_movie_shift_sample.git
+[submodule "shader_demo"]
+	path = shader_demo
+	url = https://github.com/animist/shader_demo.git
