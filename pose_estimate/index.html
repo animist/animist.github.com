@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pose Visual Demo</title>
+    <!-- Google tag (gtag.js) — 本番ドメインでのみ計測する (開発・トンネル環境の混入防止) -->
+    <script>
+      if (location.hostname === "hikikomo.ru") {
+        var gtagScript = document.createElement("script");
+        gtagScript.async = true;
+        gtagScript.src =
+          "https://www.googletagmanager.com/gtag/js?id=G-CV3CKYPS3V";
+        document.head.appendChild(gtagScript);
+        window.dataLayer = window.dataLayer || [];
+        function gtag() {
+          dataLayer.push(arguments);
+        }
+        gtag("js", new Date());
+        gtag("config", "G-CV3CKYPS3V");
+      }
+    </script>
     <script type="module" crossorigin src="./assets/index-H0_Z5dHb.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-BHb18KZn.css">
   </head>
