@@ -4,3 +4,6 @@
 [submodule "shader_demo"]
 	path = shader_demo
 	url = https://github.com/animist/shader_demo.git
+[submodule "hueslide"]
+	path = hueslide
+	url = https://github.com/animist/HueSlideDemo.git
