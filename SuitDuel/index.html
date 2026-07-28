@@ -11,5 +11,21 @@
   <link rel="manifest" href="/SuitDuel/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/SuitDuel/registerSW.js"></script></head>
   <body>
     <div id="root"></div>
+    <!-- Google tag (gtag.js) — 本番（hikikomo.ru）でのみ有効化。
+         開発サーバー・プレビュー・トンネル経由のアクセスを計測に混入させない -->
+    <script>
+      if (location.hostname === 'hikikomo.ru') {
+        var gaScript = document.createElement('script')
+        gaScript.async = true
+        gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-CV3CKYPS3V'
+        document.head.appendChild(gaScript)
+        window.dataLayer = window.dataLayer || []
+        window.gtag = function () {
+          dataLayer.push(arguments)
+        }
+        gtag('js', new Date())
+        gtag('config', 'G-CV3CKYPS3V')
+      }
+    </script>
   </body>
 </html>
