@@ -7,3 +7,6 @@
 [submodule "hueslide"]
 	path = hueslide
 	url = https://github.com/animist/HueSlideDemo.git
+[submodule "handdraw"]
+	path = handdraw
+	url = https://github.com/animist/handdraw.git
